@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Opam Uchun Sehrli Tabriknoma</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Great+Vibes&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Asosiy stillar va animatsiyalar */
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: radial-gradient(ellipse at bottom, #140a1d 0%, #09060f 55%, #050308 100%);
+            font-family: 'Montserrat', sans-serif;
+            color: #fff;
+        }
+
+        /* Orqa fon yulduzlar va zarralar kanvasi */
+        #particleCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* Yuqori boshqaruv tugmalari (Sozlash va Musiqa) */
+        .top-controls {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            right: 1rem;
+            z-index: 40;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            pointer-events: none;
+        }
+
+        .glass-pill {
+            pointer-events: auto;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(253, 230, 138, 0.35);
+            color: rgba(254, 243, 199, 0.9);
+            padding: 0.45rem 0.95rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            letter-spacing: 0.06em;
+            backdrop-filter: blur(10px);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.35);
+        }
+
+        .glass-pill:hover {
+            background: rgba(253, 230, 138, 0.18);
+            border-color: rgba(253, 230, 138, 0.75);
+            color: #fff;
+            box-shadow: 0 0 18px rgba(253, 230, 138, 0.28);
+        }
+
+        .glass-pill.hidden-btn {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-8px);
+        }
+
+        /* Sozlash modal oynasi */
+        #setupModal {
+            position: fixed;
+            inset: 0;
+            z-index: 60;
+            background: rgba(5, 3, 10, 0.78);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.25rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+        }
+
+        #setupModal.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-card {
+            width: 100%;
+            max-width: 400px;
+            background: linear-gradient(145deg, rgba(28, 16, 38, 0.95), rgba(14, 9, 22, 0.98));
+            border: 1px solid rgba(253, 230, 138, 0.4);
+            border-radius: 1.25rem;
+            padding: 1.5rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 30px rgba(244, 114, 182, 0.15);
+            transform: scale(0.94);
+            transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        #setupModal.open .modal-card {
+            transform: scale(1);
+        }
+
+        .modal-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(253, 230, 138, 0.3);
+            border-radius: 0.75rem;
+            padding: 0.65rem 0.9rem;
+            color: #fff;
+            font-size: 0.88rem;
+            outline: none;
+            transition: border-color 0.25s ease, box-shadow 0.25s ease;
+            user-select: text;
+        }
+
+        .modal-input:focus {
+            border-color: #fcd34d;
+            box-shadow: 0 0 12px rgba(252, 211, 77, 0.25);
+        }
+
+        .file-upload-box {
+            border: 1.5px dashed rgba(253, 230, 138, 0.45);
+            border-radius: 0.85rem;
+            padding: 0.9rem;
+            text-align: center;
+            cursor: pointer;
+            background: rgba(253, 230, 138, 0.04);
+            transition: all 0.25s ease;
+        }
+
+        .file-upload-box:hover {
+            border-color: #fcd34d;
+            background: rgba(253, 230, 138, 0.1);
+        }
+
+        /* Asosiy sahna konteyneri */
+        #stage {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        /* Oltin konvert konteyneri */
+        #envelopeWrapper {
+            position: relative;
+            width: min(88vw, 390px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.6s ease;
+            animation: floatEnvelope 4s ease-in-out infinite;
+        }
+
+        #envelopeWrapper:hover {
+            transform: scale(1.03);
+        }
+
+        #envelopeWrapper.opened {
+            opacity: 0;
+            transform: scale(1.15) translateY(-20px);
+            pointer-events: none;
+        }
+
+        @keyframes floatEnvelope {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-9px); }
+        }
+
+        .envelope-svg {
+            width: 100%;
+            height: auto;
+            overflow: visible;
+            filter: drop-shadow(0 0 24px rgba(251, 191, 36, 0.22));
+        }
+
+        .gold-line {
+            stroke: #fde68a;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .envelope-flap {
+            transform-origin: 200px 45px;
+            transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #envelopeWrapper.opening .envelope-flap {
+            transform: rotateX(180deg);
+        }
+
+        .heart-seal {
+            transform-origin: 200px 135px;
+            animation: pulseHeart 1.9s ease-in-out infinite;
+            transition: transform 0.45s ease, opacity 0.45s ease;
+        }
+
+        #envelopeWrapper.opening .heart-seal {
+            transform: scale(1.8);
+            opacity: 0;
+        }
+
+        @keyframes pulseHeart {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(244, 114, 182, 0.85)); }
+            50% { transform: scale(1.14); filter: drop-shadow(0 0 20px rgba(244, 114, 182, 1)); }
+        }
+
+        .envelope-label {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            letter-spacing: 0.16em;
+            fill: #ffffff;
+            filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.55));
+        }
+
+        .prompt-area {
+            margin-top: 1.15rem;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.55rem;
+        }
+
+        .sub-hint {
+            font-size: 0.72rem;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: rgba(254, 243, 199, 0.65);
+        }
+
+        .open-btn {
+            background: rgba(253, 230, 138, 0.12);
+            border: 1px solid rgba(253, 230, 138, 0.55);
+            color: #fef3c7;
+            padding: 0.5rem 1.35rem;
+            border-radius: 9999px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            letter-spacing: 0.12em;
+            backdrop-filter: blur(6px);
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        #envelopeWrapper:hover .open-btn {
+            background: rgba(253, 230, 138, 0.24);
+            border-color: #fde68a;
+            box-shadow: 0 0 26px rgba(251, 191, 36, 0.45);
+        }
+
+        /* Tabrik matni va atirgul sahnasi */
+        #revealContainer {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3.6rem 1.25rem 3.5rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.8s ease;
+            z-index: 15;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        #revealContainer.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Shaxsiy murojaat sarlavhasi (Opajonim [Ismi] uchun) */
+        .personal-dedication {
+            font-family: 'Montserrat', sans-serif;
+            font-size: clamp(0.75rem, 2.5vw, 0.92rem);
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: #fde68a;
+            text-shadow: 0 0 12px rgba(253, 230, 138, 0.55);
+            margin-bottom: 0.3rem;
+            opacity: 0;
+            transform: translateY(-8px);
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+
+        .personal-dedication.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Asosiy tabrik matni */
+        .main-greeting {
+            font-family: 'Great Vibes', cursive;
+            font-size: clamp(2.2rem, 7.2vw, 4.1rem);
+            line-height: 1.2;
+            text-align: center;
+            background: linear-gradient(135deg, #fff6e5 0%, #fcd34d 45%, #fda4af 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 22px rgba(251, 191, 36, 0.45));
+            margin-bottom: 0.45rem;
+            min-height: 1.25em;
+        }
+
+        .char-span {
+            display: inline-block;
+            opacity: 0;
+            transform: translateY(14px) scale(0.85);
+            filter: blur(6px);
+            transition: opacity 0.55s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), filter 0.55s ease;
+        }
+
+        .char-span.visible {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            filter: blur(0);
+        }
+
+        /* 4 qatorlik samimiy she'r bloki */
+        .poem-box {
+            max-width: 460px;
+            margin: 0.35rem auto 0.55rem;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .poem-line {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: clamp(1.02rem, 3.3vw, 1.32rem);
+            line-height: 1.4;
+            color: rgba(255, 241, 242, 0.92);
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.65);
+            opacity: 0;
+            transform: translateY(10px);
+            filter: blur(4px);
+            transition: opacity 0.75s ease, transform 0.75s cubic-bezier(0.22, 1, 0.36, 1), filter 0.75s ease;
+        }
+
+        .poem-line.visible {
+            opacity: 1;
+            transform: translateY(0);
+            filter: blur(0);
+        }
+
+        /* Imzo qismi: Sizning ukangiz Nazarbekdan */
+        .signature-text {
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            font-weight: 700;
+            font-size: clamp(1.18rem, 3.8vw, 1.65rem);
+            letter-spacing: 0.05em;
+            color: #fbcfe8;
+            text-shadow: 0 0 16px rgba(244, 114, 182, 0.7);
+            text-align: center;
+            margin-top: 0.15rem;
+            min-height: 1.4em;
+        }
+
+        /* Atirgul va xotira surati uchun moslashuvchan qator */
+        .visual-showcase {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 1.25rem;
+            margin-top: 0.5rem;
+            width: 100%;
+            max-width: 680px;
+        }
+
+        /* Qizil atirgul konteyneri */
+        #roseWrapper {
+            width: min(52vw, 205px);
+            height: min(55vw, 220px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transform: scale(0.75) translateY(22px);
+            transition: opacity 1.4s ease, transform 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        #roseWrapper.bloom {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+
+        .rose-aura {
+            position: absolute;
+            width: 150px;
+            height: 150px;
+            top: 22px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(225, 29, 72, 0.42) 0%, rgba(225, 29, 72, 0) 72%);
+            filter: blur(12px);
+            animation: pulseRoseAura 3s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes pulseRoseAura {
+            0%, 100% { transform: scale(0.92); opacity: 0.65; }
+            50% { transform: scale(1.16); opacity: 1; }
+        }
+
+        #roseSvg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+            animation: gentleRoseSway 4.5s ease-in-out infinite;
+            transform-origin: 150px 305px;
+        }
+
+        @keyframes gentleRoseSway {
+            0%, 100% { transform: rotate(-2deg); }
+            50% { transform: rotate(2.5deg); }
+        }
+
+        .rose-petal {
+            transform-origin: 150px 140px;
+            transition: transform 1.6s cubic-bezier(0.22, 1, 0.36, 1), opacity 1.2s ease;
+            opacity: 0;
+            transform: scale(0.25);
+        }
+
+        #roseWrapper.bloom .rose-petal {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        #roseWrapper.bloom .petal-outer-1 { transition-delay: 0.25s; }
+        #roseWrapper.bloom .petal-outer-2 { transition-delay: 0.4s; }
+        #roseWrapper.bloom .petal-mid-1   { transition-delay: 0.6s; }
+        #roseWrapper.bloom .petal-mid-2   { transition-delay: 0.75s; }
+        #roseWrapper.bloom .petal-inner   { transition-delay: 0.95s; }
+
+        .rose-leaf {
+            opacity: 0;
+            transform: scale(0.4);
+            transition: transform 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.35s, opacity 1s ease 0.35s;
+        }
+
+        .leaf-left { transform-origin: 150px 232px; }
+        .leaf-right { transform-origin: 150px 256px; }
+
+        #roseWrapper.bloom .rose-leaf {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Birgalikdagi xotira surati ramkasi (Polaroid / Vintage Gold) */
+        #memoryFrame {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            background: linear-gradient(160deg, rgba(255, 250, 240, 0.96), rgba(253, 230, 138, 0.9));
+            padding: 0.55rem 0.55rem 0.75rem;
+            border-radius: 0.85rem;
+            border: 1.5px solid #fcd34d;
+            box-shadow: 0 14px 35px rgba(0, 0, 0, 0.65), 0 0 25px rgba(251, 191, 36, 0.35);
+            width: min(44vw, 175px);
+            opacity: 0;
+            transform: translateY(20px) rotate(3deg) scale(0.88);
+            transition: opacity 1.2s ease, transform 1.4s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        #memoryFrame.has-photo {
+            display: flex;
+        }
+
+        #memoryFrame.visible {
+            opacity: 1;
+            transform: translateY(0) rotate(2.5deg) scale(1);
+        }
+
+        #memoryFrame img {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            object-fit: cover;
+            border-radius: 0.55rem;
+            border: 1px solid rgba(180, 83, 9, 0.25);
+        }
+
+        .memory-caption {
+            margin-top: 0.45rem;
+            font-family: 'Cormorant Garamond', serif;
+            font-weight: 700;
+            font-style: italic;
+            font-size: 0.88rem;
+            color: #78350f;
+            text-align: center;
+        }
+
+        /* Pastki esdalik sana muhri */
+        .date-seal {
+            margin-top: 0.65rem;
+            font-size: 0.7rem;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            color: rgba(253, 230, 138, 0.68);
+            border-top: 1px solid rgba(253, 230, 138, 0.22);
+            padding-top: 0.45rem;
+            padding-left: 1.2rem;
+            padding-right: 1.2rem;
+            opacity: 0;
+            transition: opacity 1s ease;
+        }
+
+        .date-seal.visible {
+            opacity: 1;
+        }
+
+        /* Qayta ko'rish tugmasi */
+        #replayBtn {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            z-index: 30;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(253, 230, 138, 0.38);
+            color: rgba(254, 243, 199, 0.9);
+            padding: 0.48rem 0.95rem;
+            border-radius: 9999px;
+            font-size: 0.74rem;
+            letter-spacing: 0.08em;
+            backdrop-filter: blur(8px);
+            cursor: pointer;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(10px);
+            transition: all 0.5s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        #replayBtn.visible {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+
+        #replayBtn:hover {
+            background: rgba(253, 230, 138, 0.18);
+            border-color: #fde68a;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Yulduzlar, uchar yulduzlar, uchqunlar va atirgul yaproqlari kanvasi -->
+    <canvas id="particleCanvas"></canvas>
+
+    <!-- Yuqori boshqaruv paneli -->
+    <header class="top-controls">
+        <!-- Shaxsiylashtirish tugmasi (Opasi ismi va rasm qo'shish) -->
+        <button id="openSetupBtn" type="button" class="glass-pill" aria-label="Ism va rasm qo'shish">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+            </svg>
+            <span>Sozlash / Rasm qo'shish</span>
+        </button>
+
+        <!-- Musiqa boshqaruvi tugmasi -->
+        <button id="musicToggleBtn" type="button" class="glass-pill" aria-label="Musiqani yoqish yoki o'chirish">
+            <svg id="musicIconOn" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 18V5l12-2v13" />
+                <circle cx="6" cy="18" r="3" />
+                <circle cx="18" cy="16" r="3" />
+            </svg>
+            <svg id="musicIconOff" class="hidden" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="1" y1="1" x2="23" y2="23" />
+                <path d="M9 18V5l12-2v13" />
+                <circle cx="6" cy="18" r="3" />
+            </svg>
+            <span id="musicLabel">Musiqa: Tayyor</span>
+        </button>
+    </header>
+
+    <!-- Shaxsiylashtirish modal oynasi -->
+    <div id="setupModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-card">
+            <div class="flex items-center justify-between mb-3">
+                <h2 id="modalTitle" class="text-base font-semibold text-amber-200 tracking-wide">Tabrikni shaxsiylashtirish</h2>
+                <button id="closeSetupBtn" type="button" class="text-amber-100/60 hover:text-white p-1" aria-label="Yopish">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="space-y-3.5">
+                <!-- Opasining ismi -->
+                <div>
+                    <label for="sisterNameInput" class="block text-xs text-amber-100/80 mb-1">Opangizning ismi (ixtiyoriy):</label>
+                    <input id="sisterNameInput" type="text" class="modal-input" placeholder="Masalan: Nilufar, Madina..." maxlength="28" />
+                </div>
+
+                <!-- Birgalikdagi xotira rasmi -->
+                <div>
+                    <label class="block text-xs text-amber-100/80 mb-1">Birgalikdagi rasm (ixtiyoriy):</label>
+                    <label for="photoUploadInput" class="file-upload-box block">
+                        <input id="photoUploadInput" type="file" accept="image/*" class="hidden" />
+                        <div id="uploadPromptText" class="text-xs text-amber-200/90 flex flex-col items-center gap-1">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                                <circle cx="8.5" cy="8.5" r="1.5" />
+                                <polyline points="21 15 16 10 5 21" />
+                            </svg>
+                            <span>Galereyadan rasm tanlash</span>
+                        </div>
+                        <div id="photoPreviewMini" class="hidden flex items-center justify-center gap-2.5">
+                            <img id="miniThumb" src="" alt="Tanlangan rasm" class="w-11 h-11 rounded-lg object-cover border border-amber-300/60" />
+                            <span class="text-xs text-emerald-300 font-medium">Rasm yuklandi ✓</span>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Sana matni -->
+                <div>
+                    <label for="customDateInput" class="block text-xs text-amber-100/80 mb-1">Esdalik sana yoki yozuv:</label>
+                    <input id="customDateInput" type="text" class="modal-input" maxlength="32" />
+                </div>
+
+                <div class="pt-1 flex gap-2">
+                    <button id="saveSetupBtn" type="button" class="w-full py-2.5 rounded-xl font-semibold text-xs uppercase tracking-wider text-slate-950 bg-gradient-to-r from-amber-200 via-amber-300 to-rose-200 hover:brightness-110 transition shadow-lg">
+                        Saqlash va tayyorlash
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Asosiy sahna -->
+    <main id="stage">
+        <!-- 1-Bosqich: Yulduzli zarralardan yasalgan konvert -->
+        <div id="envelopeWrapper" role="button" tabindex="0" aria-label="Konvertni ochish">
+            <svg class="envelope-svg" viewBox="0 0 400 265" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="envBgGrad" x1="20" y1="45" x2="380" y2="245" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stop-color="rgba(253, 230, 138, 0.14)" />
+                        <stop offset="50%" stop-color="rgba(244, 114, 182, 0.08)" />
+                        <stop offset="100%" stop-color="rgba(253, 230, 138, 0.14)" />
+                    </linearGradient>
+                    <linearGradient id="heartGrad" x1="180" y1="115" x2="220" y2="155" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stop-color="#fbcfe8" />
+                        <stop offset="50%" stop-color="#f472b6" />
+                        <stop offset="100%" stop-color="#e11d48" />
+                    </linearGradient>
+                </defs>
+
+                <!-- Konvert korpusi -->
+                <rect x="20" y="45" width="360" height="200" rx="8" fill="url(#envBgGrad)" class="gold-line" />
+                <!-- Konvert ichidagi oltin nuqtalar -->
+                <g fill="#fde68a" opacity="0.65">
+                    <circle cx="55" cy="85" r="1.4" />
+                    <circle cx="95" cy="175" r="1.7" />
+                    <circle cx="145" cy="95" r="1.2" />
+                    <circle cx="265" cy="92" r="1.5" />
+                    <circle cx="315" cy="172" r="1.4" />
+                    <circle cx="348" cy="110" r="1.8" />
+                    <circle cx="72" cy="215" r="1.3" />
+                    <circle cx="332" cy="218" r="1.5" />
+                </g>
+
+                <!-- Pastki va yon buklamalar -->
+                <path d="M22 243 L155 142 M378 243 L245 142" class="gold-line" opacity="0.75" />
+
+                <!-- Yuqori qopqoq -->
+                <g class="envelope-flap">
+                    <path d="M20 45 L200 155 L380 45" fill="rgba(253, 230, 138, 0.09)" class="gold-line" />
+                </g>
+
+                <!-- Yurakcha muhr -->
+                <g class="heart-seal">
+                    <path d="M200 153 C200 153 177 137 177 123 C177 115 184 110 191 110 C196 110 199 113 200 116 C201 113 204 110 209 110 C216 110 223 115 223 123 C223 137 200 153 200 153 Z" fill="url(#heartGrad)" />
+                </g>
+
+                <!-- Konvert ustidagi "SIZ UCHUN" yozuvi -->
+                <text id="envelopeMainLabel" x="200" y="205" text-anchor="middle" font-size="22" class="envelope-label">SIZ UCHUN</text>
+            </svg>
+
+            <!-- Pastki ko'rsatma va tugma -->
+            <div class="prompt-area">
+                <p id="envelopeSubHint" class="sub-hint">Maxsus maktub keldi</p>
+                <button type="button" class="open-btn">O'qish uchun bosing ✨</button>
+            </div>
+        </div>
+
+        <!-- 2-Bosqich: Tabrik matni, she'r, xotira rasmi va ochiluvchi qizil atirgul -->
+        <section id="revealContainer" aria-live="polite">
+            <p id="personalDedication" class="personal-dedication">Aziz Opajonim uchun</p>
+            <h1 id="mainText" class="main-greeting"></h1>
+
+            <!-- 4 qatorlik samimiy tilak / she'r -->
+            <div id="poemBox" class="poem-box">
+                <p class="poem-line">Hayotimning eng yorug' nurisiz,</p>
+                <p class="poem-line">Mehringizdan ko'nglim bo'lar shod.</p>
+                <p class="poem-line">Baxtimizga doim sog' bo'ling,</p>
+                <p class="poem-line">Siz bor — dunyo menga obod!</p>
+            </div>
+
+            <p id="subText" class="signature-text"></p>
+
+            <!-- 3-Bosqich: Sehrli ochiluvchi Qizil Atirgul va Xotira Surati -->
+            <div class="visual-showcase">
+                <div id="roseWrapper" aria-label="Qizil atirgul animatsiyasi">
+                    <div class="rose-aura"></div>
+                    <svg id="roseSvg" viewBox="0 0 300 330" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <defs>
+                            <radialGradient id="petalDeep" cx="50%" cy="35%" r="65%">
+                                <stop offset="0%" stop-color="#ff4d6d" />
+                                <stop offset="55%" stop-color="#c9184a" />
+                                <stop offset="100%" stop-color="#590d22" />
+                            </radialGradient>
+                            <radialGradient id="petalBright" cx="45%" cy="30%" r="70%">
+                                <stop offset="0%" stop-color="#ff758f" />
+                                <stop offset="50%" stop-color="#e11d48" />
+                                <stop offset="100%" stop-color="#800f2f" />
+                            </radialGradient>
+                            <linearGradient id="stemGrad" x1="150" y1="170" x2="150" y2="315" gradientUnits="userSpaceOnUse">
+                                <stop offset="0%" stop-color="#2d6a4f" />
+                                <stop offset="50%" stop-color="#1b4332" />
+                                <stop offset="100%" stop-color="#081c15" />
+                            </linearGradient>
+                            <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stop-color="#40916c" />
+                                <stop offset="100%" stop-color="#1b4332" />
+                            </linearGradient>
+                        </defs>
+
+                        <!-- Poyasi -->
+                        <path d="M150 175 C147 220, 153 265, 149 312" stroke="url(#stemGrad)" stroke-width="6.5" stroke-linecap="round" />
+
+                        <!-- Chap barg -->
+                        <g class="rose-leaf leaf-left">
+                            <path d="M149 232 C125 218, 92 222, 82 238 C100 250, 128 247, 149 232 Z" fill="url(#leafGrad)" />
+                            <path d="M149 232 C126 232, 105 234, 86 238" stroke="#74c69d" stroke-width="1.2" opacity="0.6" />
+                        </g>
+
+                        <!-- O'ng barg -->
+                        <g class="rose-leaf leaf-right">
+                            <path d="M151 256 C176 240, 208 245, 218 262 C198 273, 172 270, 151 256 Z" fill="url(#leafGrad)" />
+                            <path d="M151 256 C174 256, 195 258, 213 262" stroke="#74c69d" stroke-width="1.2" opacity="0.6" />
+                        </g>
+
+                        <!-- Kosachabarglar -->
+                        <path d="M150 178 L124 166 L138 184 Z" fill="#2d6a4f" />
+                        <path d="M150 178 L176 166 L162 184 Z" fill="#2d6a4f" />
+
+                        <!-- Atirgul gulbarglari (tashqidan ichkariga) -->
+                        <path class="rose-petal petal-outer-1" d="M150 176 C95 174, 72 122, 105 88 C122 72, 144 86, 150 112 Z" fill="url(#petalDeep)" />
+                        <path class="rose-petal petal-outer-2" d="M150 176 C205 174, 228 122, 195 88 C178 72, 156 86, 150 112 Z" fill="url(#petalDeep)" />
+                        <path class="rose-petal petal-mid-1" d="M150 175 C106 168, 94 114, 126 84 C140 72, 156 85, 150 124 Z" fill="url(#petalBright)" />
+                        <path class="rose-petal petal-mid-2" d="M150 175 C194 168, 206 114, 174 84 C160 72, 144 85, 150 124 Z" fill="url(#petalBright)" />
+                        <path class="rose-petal petal-inner" d="M150 172 C122 162, 118 112, 150 86 C182 112, 178 162, 150 172 Z" fill="url(#petalBright)" />
+                        <path class="rose-petal petal-inner" d="M137 118 C144 105, 158 105, 163 118 C157 127, 143 127, 137 118 Z" fill="#ff8fa3" opacity="0.65" />
+                    </svg>
+                </div>
+
+                <!-- Birgalikdagi xotira surati ramkasi -->
+                <figure id="memoryFrame">
+                    <img id="memoryPhotoImg" src="" alt="Birgalikdagi xotira surati" />
+                    <figcaption class="memory-caption">Eng shirin xotira ✨</figcaption>
+                </figure>
+            </div>
+
+            <!-- Esdalik sana muhri -->
+            <div id="dateSeal" class="date-seal"></div>
+        </section>
+    </main>
+
+    <!-- Qayta ko'rish tugmasi -->
+    <button id="replayBtn" type="button" aria-label="Animatsiyani qayta ko'rish">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+            <path d="M3 3v5h5" />
+        </svg>
+        <span>Qayta ko'rish</span>
+    </button>
+
+    <script>
+        /**
+         * 1. Web Audio API orqali mayin pianino / musiqa qutisi kuyi (tashqi faylsiz)
+         */
+        class AmbientPianoPlayer {
+            constructor() {
+                this.ctx = null;
+                this.isPlaying = false;
+                this.isMuted = false;
+                this.timerId = null;
+                this.step = 0;
+                this.melody = [
+                    220.00, 261.63, 329.63, 440.00, 392.00, 329.63,
+                    174.61, 220.00, 261.63, 349.23, 329.63, 261.63,
+                    130.81, 196.00, 261.63, 329.63, 293.66, 261.63,
+                    196.00, 246.94, 293.66, 392.00, 329.63, 246.94
+                ];
+            }
+
+            initContext() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) {
+                        this.ctx = new AudioCtx();
+                    }
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playNote(freq) {
+                if (!this.ctx || this.isMuted) return;
+                const now = this.ctx.currentTime;
+
+                const osc = this.ctx.createOscillator();
+                const overtone = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const overGain = this.ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, now);
+
+                overtone.type = 'triangle';
+                overtone.frequency.setValueAtTime(freq * 2, now);
+                overGain.gain.setValueAtTime(0.018, now);
+
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.exponentialRampToValueAtTime(0.075, now + 0.06);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 2.1);
+
+                osc.connect(gain);
+                overtone.connect(overGain);
+                overGain.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                osc.start(now);
+                overtone.start(now);
+                osc.stop(now + 2.2);
+                overtone.stop(now + 2.2);
+            }
+
+            start() {
+                this.initContext();
+                if (this.isPlaying) return;
+                this.isPlaying = true;
+                this.step = 0;
+
+                const tick = () => {
+                    if (!this.isPlaying) return;
+                    const freq = this.melody[this.step % this.melody.length];
+                    this.playNote(freq);
+                    this.step++;
+                    this.timerId = setTimeout(tick, 540);
+                };
+                tick();
+                this.updateUI();
+            }
+
+            toggleMute() {
+                this.initContext();
+                if (!this.isPlaying) {
+                    this.isMuted = false;
+                    this.start();
+                    return;
+                }
+                this.isMuted = !this.isMuted;
+                this.updateUI();
+            }
+
+            updateUI() {
+                const label = document.getElementById('musicLabel');
+                const iconOn = document.getElementById('musicIconOn');
+                const iconOff = document.getElementById('musicIconOff');
+                if (!label || !iconOn || !iconOff) return;
+
+                if (!this.isPlaying) {
+                    label.textContent = 'Musiqa: Tayyor';
+                    iconOn.classList.remove('hidden');
+                    iconOff.classList.add('hidden');
+                } else if (this.isMuted) {
+                    label.textContent = "Musiqa: O'chirilgan";
+                    iconOn.classList.add('hidden');
+                    iconOff.classList.remove('hidden');
+                } else {
+                    label.textContent = 'Musiqa: Yoqilgan';
+                    iconOn.classList.remove('hidden');
+                    iconOff.classList.add('hidden');
+                }
+            }
+        }
+
+        const piano = new AmbientPianoPlayer();
+
+        /**
+         * 2. Sehrli yulduzli osmon, uchar yulduzlar, zarralar portlashi va interaktiv gulbarglar
+         */
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let width = canvas.width = window.innerWidth;
+        let height = canvas.height = window.innerHeight;
+
+        window.addEventListener('resize', () => {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        });
+
+        const stars = [];
+        const shootingStars = [];
+        const bursts = [];
+        const fallingPetals = [];
+        const clickHearts = [];
+        let roseBloomed = false;
+        let isEnvelopeOpened = false;
+
+        function initStars() {
+            stars.length = 0;
+            const count = Math.min(Math.floor((width * height) / 6000), 190);
+            for (let i = 0; i < count; i++) {
+                stars.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    radius: Math.random() * 1.7 + 0.3,
+                    alpha: Math.random(),
+                    speedY: -(Math.random() * 0.22 + 0.05),
+                    speedX: (Math.random() - 0.5) * 0.12,
+                    twinkleSpeed: Math.random() * 0.025 + 0.008,
+                    color: Math.random() > 0.35 ? '#fde68a' : (Math.random() > 0.5 ? '#fbcfe8' : '#ffffff')
+                });
+            }
+        }
+
+        function spawnShootingStar() {
+            if (shootingStars.length > 2) return;
+            shootingStars.push({
+                x: Math.random() * width * 0.85,
+                y: Math.random() * height * 0.35,
+                len: Math.random() * 90 + 60,
+                speed: Math.random() * 9 + 7,
+                angle: Math.PI / 5 + (Math.random() * 0.2 - 0.1),
+                alpha: 1
+            });
+        }
+
+        function createMagicBurst(centerX, centerY, amount = 95) {
+            for (let i = 0; i < amount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = Math.random() * 5.5 + 1.5;
+                bursts.push({
+                    x: centerX,
+                    y: centerY,
+                    vx: Math.cos(angle) * velocity,
+                    vy: Math.sin(angle) * velocity - 1,
+                    size: Math.random() * 3.2 + 1.2,
+                    alpha: 1,
+                    decay: Math.random() * 0.015 + 0.009,
+                    color: Math.random() > 0.4 ? '#fcd34d' : '#f472b6'
+                });
+            }
+        }
+
+        function spawnInteractiveHearts(x, y) {
+            for (let i = 0; i < 10; i++) {
+                const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.8;
+                const speed = Math.random() * 3.2 + 1.5;
+                clickHearts.push({
+                    x,
+                    y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    size: Math.random() * 7 + 6,
+                    alpha: 1,
+                    decay: 0.016 + Math.random() * 0.01,
+                    isHeart: Math.random() > 0.35,
+                    color: Math.random() > 0.4 ? '#fb7185' : '#fcd34d'
+                });
+            }
+        }
+
+        function drawMiniHeart(ctx, x, y, size, color, alpha) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            const topCurveHeight = size * 0.3;
+            ctx.moveTo(0, topCurveHeight);
+            ctx.bezierCurveTo(0, 0, -size / 2, 0, -size / 2, topCurveHeight);
+            ctx.bezierCurveTo(-size / 2, (size + topCurveHeight) / 2, 0, (size + topCurveHeight) / 1.3, 0, size);
+            ctx.bezierCurveTo(0, (size + topCurveHeight) / 1.3, size / 2, (size + topCurveHeight) / 2, size / 2, topCurveHeight);
+            ctx.bezierCurveTo(size / 2, 0, 0, 0, 0, topCurveHeight);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        function spawnFallingPetal() {
+            if (!roseBloomed || fallingPetals.length > 24) return;
+            fallingPetals.push({
+                x: Math.random() * width,
+                y: -20,
+                size: Math.random() * 7 + 5,
+                speedY: Math.random() * 1.1 + 0.6,
+                speedX: Math.random() * 0.8 - 0.4,
+                rotation: Math.random() * 360,
+                rotSpeed: (Math.random() - 0.5) * 2.5,
+                swayOffset: Math.random() * Math.PI * 2,
+                alpha: Math.random() * 0.5 + 0.45
+            });
+        }
+
+        function animateCanvas() {
+            ctx.clearRect(0, 0, width, height);
+
+            for (let s of stars) {
+                s.y += s.speedY;
+                s.x += s.speedX;
+                s.alpha += s.twinkleSpeed;
+
+                if (s.y < -5) s.y = height + 5;
+                if (s.x < -5) s.x = width + 5;
+                if (s.x > width + 5) s.x = -5;
+
+                const currentAlpha = (Math.sin(s.alpha) + 1) * 0.42 + 0.12;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.radius, 0, Math.PI * 2);
+                ctx.fillStyle = s.color;
+                ctx.globalAlpha = currentAlpha;
+                ctx.fill();
+            }
+
+            if (Math.random() < 0.006) {
+                spawnShootingStar();
+            }
+
+            for (let i = shootingStars.length - 1; i >= 0; i--) {
+                const ss = shootingStars[i];
+                ss.x += Math.cos(ss.angle) * ss.speed;
+                ss.y += Math.sin(ss.angle) * ss.speed;
+                ss.alpha -= 0.018;
+
+                if (ss.alpha <= 0) {
+                    shootingStars.splice(i, 1);
+                    continue;
+                }
+
+                const tailX = ss.x - Math.cos(ss.angle) * ss.len;
+                const tailY = ss.y - Math.sin(ss.angle) * ss.len;
+                const grad = ctx.createLinearGradient(ss.x, ss.y, tailX, tailY);
+                grad.addColorStop(0, `rgba(255, 250, 220, ${ss.alpha})`);
+                grad.addColorStop(1, 'rgba(255, 250, 220, 0)');
+
+                ctx.strokeStyle = grad;
+                ctx.lineWidth = 1.8;
+                ctx.beginPath();
+                ctx.moveTo(ss.x, ss.y);
+                ctx.lineTo(tailX, tailY);
+                ctx.stroke();
+            }
+
+            for (let i = bursts.length - 1; i >= 0; i--) {
+                const b = bursts[i];
+                b.x += b.vx;
+                b.y += b.vy;
+                b.vx *= 0.96;
+                b.vy *= 0.96;
+                b.vy += 0.03;
+                b.alpha -= b.decay;
+
+                if (b.alpha <= 0) {
+                    bursts.splice(i, 1);
+                    continue;
+                }
+
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+                ctx.fillStyle = b.color;
+                ctx.globalAlpha = b.alpha;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = b.color;
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            for (let i = clickHearts.length - 1; i >= 0; i--) {
+                const h = clickHearts[i];
+                h.x += h.vx;
+                h.y += h.vy;
+                h.vy += 0.04;
+                h.alpha -= h.decay;
+
+                if (h.alpha <= 0) {
+                    clickHearts.splice(i, 1);
+                    continue;
+                }
+
+                if (h.isHeart) {
+                    drawMiniHeart(ctx, h.x, h.y, h.size, h.color, h.alpha);
+                } else {
+                    ctx.beginPath();
+                    ctx.arc(h.x, h.y, h.size * 0.35, 0, Math.PI * 2);
+                    ctx.fillStyle = h.color;
+                    ctx.globalAlpha = h.alpha;
+                    ctx.fill();
+                }
+            }
+
+            if (roseBloomed && Math.random() < 0.048) {
+                spawnFallingPetal();
+            }
+
+            for (let i = fallingPetals.length - 1; i >= 0; i--) {
+                const p = fallingPetals[i];
+                p.y += p.speedY;
+                p.x += Math.sin(p.y * 0.015 + p.swayOffset) * 0.7 + p.speedX;
+                p.rotation += p.rotSpeed;
+
+                if (p.y > height + 30) {
+                    fallingPetals.splice(i, 1);
+                    continue;
+                }
+
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate((p.rotation * Math.PI) / 180);
+                ctx.globalAlpha = p.alpha;
+
+                ctx.beginPath();
+                ctx.moveTo(0, -p.size);
+                ctx.bezierCurveTo(p.size, -p.size * 0.5, p.size, p.size * 0.8, 0, p.size);
+                ctx.bezierCurveTo(-p.size, p.size * 0.8, -p.size, -p.size * 0.5, 0, -p.size);
+                ctx.fillStyle = '#e11d48';
+                ctx.fill();
+                ctx.restore();
+            }
+
+            ctx.globalAlpha = 1;
+            requestAnimationFrame(animateCanvas);
+        }
+
+        initStars();
+        animateCanvas();
+
+        /**
+         * 3. Shaxsiylashtirish va Sahna Boshqaruvi
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            const envelopeWrapper = document.getElementById('envelopeWrapper');
+            const revealContainer = document.getElementById('revealContainer');
+            const personalDedicationEl = document.getElementById('personalDedication');
+            const mainTextEl = document.getElementById('mainText');
+            const poemLines = document.querySelectorAll('.poem-line');
+            const subTextEl = document.getElementById('subText');
+            const roseWrapper = document.getElementById('roseWrapper');
+            const memoryFrame = document.getElementById('memoryFrame');
+            const memoryPhotoImg = document.getElementById('memoryPhotoImg');
+            const dateSealEl = document.getElementById('dateSeal');
+            const replayBtn = document.getElementById('replayBtn');
+
+            const openSetupBtn = document.getElementById('openSetupBtn');
+            const closeSetupBtn = document.getElementById('closeSetupBtn');
+            const setupModal = document.getElementById('setupModal');
+            const sisterNameInput = document.getElementById('sisterNameInput');
+            const photoUploadInput = document.getElementById('photoUploadInput');
+            const uploadPromptText = document.getElementById('uploadPromptText');
+            const photoPreviewMini = document.getElementById('photoPreviewMini');
+            const miniThumb = document.getElementById('miniThumb');
+            const customDateInput = document.getElementById('customDateInput');
+            const saveSetupBtn = document.getElementById('saveSetupBtn');
+            const envelopeMainLabel = document.getElementById('envelopeMainLabel');
+            const musicToggleBtn = document.getElementById('musicToggleBtn');
+
+            function getFormattedTodayUz() {
+                const months = [
+                    'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun',
+                    'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'
+                ];
+                const d = new Date();
+                return `${d.getDate()}-${months[d.getMonth()]}, ${d.getFullYear()}-yil`;
+            }
+
+            let sisterName = '';
+            let uploadedPhotoDataUrl = '';
+            let sealText = getFormattedTodayUz();
+            if (customDateInput) {
+                customDateInput.value = sealText;
+            }
+
+            const MAIN_MESSAGE = "Sizni yaxshi ko'raman, Opa!";
+            const SUB_MESSAGE = "Sizning ukangiz Nazarbekdan ❤️";
+
+            let isAnimating = false;
+            let timeouts = [];
+
+            function clearAllTimeouts() {
+                timeouts.forEach(id => clearTimeout(id));
+                timeouts = [];
+            }
+
+            if (photoUploadInput) {
+                photoUploadInput.addEventListener('change', (e) => {
+                    const file = e.target.files && e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                        uploadedPhotoDataUrl = ev.target.result;
+                        if (miniThumb) miniThumb.src = uploadedPhotoDataUrl;
+                        if (uploadPromptText) uploadPromptText.classList.add('hidden');
+                        if (photoPreviewMini) photoPreviewMini.classList.remove('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            if (openSetupBtn && setupModal) {
+                openSetupBtn.addEventListener('click', () => {
+                    setupModal.classList.add('open');
+                });
+            }
+
+            if (closeSetupBtn && setupModal) {
+                closeSetupBtn.addEventListener('click', () => {
+                    setupModal.classList.remove('open');
+                });
+            }
+
+            if (setupModal) {
+                setupModal.addEventListener('click', (e) => {
+                    if (e.target === setupModal) setupModal.classList.remove('open');
+                });
+            }
+
+            if (saveSetupBtn) {
+                saveSetupBtn.addEventListener('click', () => {
+                    sisterName = sisterNameInput ? sisterNameInput.value.trim() : '';
+                    sealText = (customDateInput && customDateInput.value.trim()) || getFormattedTodayUz();
+
+                    if (sisterName) {
+                        if (envelopeMainLabel) envelopeMainLabel.textContent = `${sisterName.toUpperCase()} UCHUN`;
+                        if (personalDedicationEl) personalDedicationEl.textContent = `Aziz Opajonim ${sisterName} uchun`;
+                    } else {
+                        if (envelopeMainLabel) envelopeMainLabel.textContent = 'SIZ UCHUN';
+                        if (personalDedicationEl) personalDedicationEl.textContent = 'Aziz Opajonim uchun';
+                    }
+
+                    if (uploadedPhotoDataUrl) {
+                        if (memoryPhotoImg) memoryPhotoImg.src = uploadedPhotoDataUrl;
+                        if (memoryFrame) memoryFrame.classList.add('has-photo');
+                    } else if (memoryFrame) {
+                        memoryFrame.classList.remove('has-photo');
+                    }
+
+                    if (setupModal) setupModal.classList.remove('open');
+                    if (isEnvelopeOpened) {
+                        resetExperience();
+                    }
+                });
+            }
+
+            if (musicToggleBtn) {
+                musicToggleBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    piano.toggleMute();
+                });
+            }
+
+            document.addEventListener('click', (e) => {
+                if (!isEnvelopeOpened) return;
+                if (e.target.closest('button') || e.target.closest('#setupModal')) return;
+                spawnInteractiveHearts(e.clientX, e.clientY);
+            });
+
+            function animateText(element, text, charDelay, onComplete) {
+                if (!element) {
+                    if (onComplete) onComplete();
+                    return;
+                }
+                element.innerHTML = '';
+                const words = text.split(' ');
+                let globalIndex = 0;
+
+                words.forEach((word, wIdx) => {
+                    const wordSpan = document.createElement('span');
+                    wordSpan.style.display = 'inline-block';
+                    wordSpan.style.whiteSpace = 'nowrap';
+
+                    for (let i = 0; i < word.length; i++) {
+                        const charSpan = document.createElement('span');
+                        charSpan.textContent = word[i];
+                        charSpan.className = 'char-span';
+                        wordSpan.appendChild(charSpan);
+
+                        const delay = globalIndex * charDelay;
+                        const tId = setTimeout(() => {
+                            charSpan.classList.add('visible');
+                        }, delay);
+                        timeouts.push(tId);
+
+                        globalIndex++;
+                    }
+
+                    element.appendChild(wordSpan);
+
+                    if (wIdx < words.length - 1) {
+                        const spaceSpan = document.createElement('span');
+                        spaceSpan.innerHTML = '&nbsp;';
+                        spaceSpan.className = 'char-span';
+                        element.appendChild(spaceSpan);
+
+                        const spaceDelay = globalIndex * charDelay;
+                        const sId = setTimeout(() => {
+                            spaceSpan.classList.add('visible');
+                        }, spaceDelay);
+                        timeouts.push(sId);
+                        globalIndex++;
+                    }
+                });
+
+                const totalDuration = globalIndex * charDelay + 300;
+                const endId = setTimeout(() => {
+                    if (onComplete) onComplete();
+                }, totalDuration);
+                timeouts.push(endId);
+            }
+
+            function openEnvelopeSequence() {
+                if (isAnimating || !envelopeWrapper) return;
+                isAnimating = true;
+                isEnvelopeOpened = true;
+
+                piano.start();
+                if (openSetupBtn) openSetupBtn.classList.add('hidden-btn');
+
+                const rect = envelopeWrapper.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+
+                envelopeWrapper.classList.add('opening');
+
+                timeouts.push(setTimeout(() => {
+                    createMagicBurst(centerX, centerY, 110);
+                    envelopeWrapper.classList.add('opened');
+                }, 450));
+
+                timeouts.push(setTimeout(() => {
+                    if (revealContainer) revealContainer.classList.add('active');
+                    if (personalDedicationEl) personalDedicationEl.classList.add('visible');
+
+                    animateText(mainTextEl, MAIN_MESSAGE, 62, () => {
+                        poemLines.forEach((line, idx) => {
+                            timeouts.push(setTimeout(() => {
+                                line.classList.add('visible');
+                            }, idx * 520));
+                        });
+
+                        const poemDuration = poemLines.length * 520 + 250;
+                        timeouts.push(setTimeout(() => {
+                            animateText(subTextEl, SUB_MESSAGE, 48, () => {
+                                if (roseWrapper) roseWrapper.classList.add('bloom');
+                                roseBloomed = true;
+
+                                if (uploadedPhotoDataUrl && memoryFrame) {
+                                    timeouts.push(setTimeout(() => {
+                                        memoryFrame.classList.add('visible');
+                                    }, 450));
+                                }
+
+                                if (roseWrapper) {
+                                    const roseRect = roseWrapper.getBoundingClientRect();
+                                    createMagicBurst(
+                                        roseRect.left + roseRect.width / 2,
+                                        roseRect.top + roseRect.height * 0.42,
+                                        75
+                                    );
+                                }
+
+                                timeouts.push(setTimeout(() => {
+                                    if (dateSealEl) {
+                                        dateSealEl.textContent = `✦ ${sealText} ✦`;
+                                        dateSealEl.classList.add('visible');
+                                    }
+                                    if (replayBtn) replayBtn.classList.add('visible');
+                                }, 1300));
+                            });
+                        }, poemDuration));
+                    });
+                }, 900));
+            }
+
+            function resetExperience() {
+                clearAllTimeouts();
+                isAnimating = false;
+                isEnvelopeOpened = false;
+                roseBloomed = false;
+                fallingPetals.length = 0;
+
+                if (replayBtn) replayBtn.classList.remove('visible');
+                if (revealContainer) revealContainer.classList.remove('active');
+                if (personalDedicationEl) personalDedicationEl.classList.remove('visible');
+                poemLines.forEach(line => line.classList.remove('visible'));
+                if (roseWrapper) roseWrapper.classList.remove('bloom');
+                if (memoryFrame) memoryFrame.classList.remove('visible');
+                if (dateSealEl) dateSealEl.classList.remove('visible');
+                if (openSetupBtn) openSetupBtn.classList.remove('hidden-btn');
+
+                timeouts.push(setTimeout(() => {
+                    if (mainTextEl) mainTextEl.innerHTML = '';
+                    if (subTextEl) subTextEl.innerHTML = '';
+                    if (envelopeWrapper) envelopeWrapper.classList.remove('opening', 'opened');
+                }, 380));
+            }
+
+            if (envelopeWrapper) {
+                envelopeWrapper.addEventListener('click', openEnvelopeSequence);
+                envelopeWrapper.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openEnvelopeSequence();
+                    }
+                });
+            }
+
+            if (replayBtn) {
+                replayBtn.addEventListener('click', resetExperience);
+            }
+        });
+    </script>
+</body>
+</html>
